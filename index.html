@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Trò Chơi Mê Cung Trắc Nghiệm</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 0;
+      background: #eef;
+      font-family: sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .container {
+      text-align: center;
+      margin-top: 10px;
+    }
+    #question {
+      font-size: 20px;
+      margin-bottom: 10px;
+      font-weight: bold;
+    }
+    #maze {
+      display: grid;
+      grid-template-columns: repeat(10, 40px);
+      grid-template-rows: repeat(10, 40px);
+      gap: 2px;
+      margin: 10px auto;
+    }
+    .cell {
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #fff;
+      border: 1px solid #ccc;
+      font-size: 12px;
+    }
+    .wall { background: #333; }
+    .player { background: orange; }
+    .monster { background: crimson; color: white; font-weight: bold; }
+    .answer { background: #4CAF50; color: white; font-weight: bold; }
+    #status {
+      margin-top: 10px;
+      font-size: 18px;
+      font-weight: bold;
+    }
+    #points {
+      margin-top: 5px;
+      font-size: 16px;
+    }
+    .controls {
+      margin-top: 15px;
+      display: grid;
+      grid-template-columns: repeat(3, 60px);
+      grid-template-rows: repeat(2, 60px);
+      gap: 5px;
+      justify-content: center;
+    }
+    .btn {
+      width: 60px;
+      height: 60px;
+      background: #4CAF50;
+      color: white;
+      font-size: 20px;
+      border: none;
+      border-radius: 10px;
+    }
+    .empty { visibility: hidden; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div id="question">Câu hỏi: </div>
+    <div id="maze"></div>
+    <div id="points">Điểm: 0</div>
+    <div id="status"></div>
+
+    <div class="controls">
+      <div class="empty"></div>
+      <button class="btn" onclick="movePlayer(0, -1)">⬆️</button>
+      <div class="empty"></div>
+      <button class="btn" onclick="movePlayer(-1, 0)">⬅️</button>
+      <button class="btn" onclick="movePlayer(0, 1)">⬇️</button>
+      <button class="btn" onclick="movePlayer(1, 0)">➡️</button>
+    </div>
+  </div>
+
+  <script>
+    const questions = [
+      { question: "Lệnh sao chép là gì?", answers: [
+        { text: "copy", correct: true, x: 4, y: 1 },
+        { text: "cut", correct: false, x: 7, y: 2 },
+        { text: "delete", correct: false, x: 1, y: 8 }
+      ]},
+      { question: "Lệnh dán là gì?", answers: [
+        { text: "paste", correct: true, x: 2, y: 1 },
+        { text: "delete", correct: false, x: 6, y: 6 },
+        { text: "copy", correct: false, x: 3, y: 7 }
+      ]},
+      { question: "Lệnh xóa là gì?", answers: [
+        { text: "delete", correct: true, x: 5, y: 8 },
+        { text: "cut", correct: false, x: 2, y: 4 },
+        { text: "copy", correct: false, x: 6, y: 1 }
+      ]},
+      { question: "Lệnh cắt là gì?", answers: [
+        { text: "cut", correct: true, x: 4, y: 7 },
+        { text: "copy", correct: false, x: 5, y: 3 },
+        { text: "paste", correct: false, x: 3, y: 6 }
+      ]},
+      { question: "Phím tắt sao chép?", answers: [
+        { text: "Ctrl+C", correct: true, x: 7, y: 8 },
+        { text: "Ctrl+X", correct: false, x: 1, y: 4 },
+        { text: "Ctrl+V", correct: false, x: 8, y: 3 }
+      ]},
+      { question: "Phím tắt cắt?", answers: [
+        { text: "Ctrl+X", correct: true, x: 1, y: 1 },
+        { text: "Ctrl+C", correct: false, x: 3, y: 4 },
+        { text: "Ctrl+V", correct: false, x: 6, y: 7 }
+      ]},
+      { question: "Phím tắt dán?", answers: [
+        { text: "Ctrl+V", correct: true, x: 2, y: 3 },
+        { text: "Ctrl+X", correct: false, x: 8, y: 1 },
+        { text: "Ctrl+C", correct: false, x: 7, y: 6 }
+      ]},
+      { question: "Thao tác chèn văn bản?", answers: [
+        { text: "Insert", correct: true, x: 5, y: 4 },
+        { text: "Delete", correct: false, x: 2, y: 2 },
+        { text: "Paste", correct: false, x: 6, y: 6 }
+      ]},
+      { question: "Đâu là phần mềm soạn văn bản?", answers: [
+        { text: "Word", correct: true, x: 3, y: 5 },
+        { text: "Excel", correct: false, x: 4, y: 8 },
+        { text: "Paint", correct: false, x: 2, y: 2 }
+      ]},
+      { question: "Lệnh tắt máy tính?", answers: [
+        { text: "Shut down", correct: true, x: 1, y: 3 },
+        { text: "Sleep", correct: false, x: 7, y: 1 },
+        { text: "Restart", correct: false, x: 9, y: 2 }
+      ]},
+      // Add more questions here
+    ];
+
+    const mazeData = [
+      [' ',' ',' ',' ',' ',' ',' ',' ',' ',' '],
+      [' ',' ',' ',' ',' ',' ',' ',' ',' ',' '],
+      [' ',' ',' ',' ',' ',' ',' ',' ',' ',' '],
+      [' ',' ',' ',' ',' ',' ',' ',' ',' ',' '],
+      [' ',' ',' ',' ',' ',' ',' ',' ',' ',' '],
+      [' ',' ',' ',' ',' ',' ',' ',' ',' ',' '],
+      [' ',' ',' ',' ',' ',' ',' ',' ',' ',' '],
+      [' ',' ',' ',' ',' ',' ',' ',' ',' ',' '],
+      [' ',' ',' ',' ',' ',' ',' ',' ',' ',' '],
+      [' ',' ',' ',' ',' ',' ',' ',' ',' ',' '],
+    ];
+
+    const mazeElement = document.getElementById("maze");
+    const questionText = document.getElementById("question");
+    const pointsText = document.getElementById("points");
+    const statusText = document.getElementById("status");
+
+    let player = { x: 5, y: 5 };
+    let monsters = [
+      { x: 0, y: 0 },
+      { x: 9, y: 0 },
+      { x: 0, y: 9 }
+    ];
+    let currentQuestionIndex = 0;
+    let score = 0;
+    let wrongAnswers = 0;
+
+    function drawMaze() {
+      mazeElement.innerHTML = "";
+      for (let y = 0; y < 10; y++) {
+        for (let x = 0; x < 10; x++) {
+          const div = document.createElement("div");
+          div.classList.add("cell");
+
+          if (mazeData[y][x] === "#") {
+            div.classList.add("wall");
+          } else {
+            if (player.x === x && player.y === y) div.classList.add("player");
+            monsters.forEach(m => {
+              if (m.x === x && m.y === y) div.classList.add("monster");
+            });
+            questions[currentQuestionIndex].answers.forEach(a => {
+              if (a.x === x && a.y === y) {
+                div.classList.add("answer");
+                div.textContent = a.text;
+              }
+            });
+          }
+
+          mazeElement.appendChild(div);
+        }
+      }
+
+      questionText.textContent = "Câu hỏi: " + questions[currentQuestionIndex].question;
+    }
+
+    function movePlayer(dx, dy) {
+      const newX = player.x + dx;
+      const newY = player.y + dy;
+      if (
+        newX >= 0 && newX < 10 &&
+        newY >= 0 && newY < 10 &&
+        mazeData[newY][newX] !== "#"
+      ) {
+        player.x = newX;
+        player.y = newY;
+        checkAnswer();
+        checkMonster();
+        drawMaze();
+      }
+    }
+
+    function checkAnswer() {
+      const answers = questions[currentQuestionIndex].answers;
+      for (const ans of answers) {
+        if (ans.x === player.x && ans.y === player.y) {
+          if (ans.correct) {
+            score++;
+            pointsText.textContent = "Điểm: " + score;
+            statusText.textContent = "✅ Đúng!";
+            currentQuestionIndex++;
+            if (currentQuestionIndex === questions.length) {
+              if (wrongAnswers === 0) {
+                statusText.textContent = "🎉 Bạn đã chiến thắng!";
+              } else {
+                statusText.textContent = "❌ Bạn đã thua, hãy chơi lại.";
+              }
+            }
+          } else {
+            wrongAnswers++;
+            score--;
+            pointsText.textContent = "Điểm: " + score;
+            statusText.textContent = "❌ Sai rồi!";
+            currentQuestionIndex++;
+            if (currentQuestionIndex === questions.length) {
+              statusText.textContent = "❌ Bạn đã thua, hãy chơi lại.";
+            }
+          }
+          return;
+        }
+      }
+    }
+
+    function checkMonster() {
+      for (const m of monsters) {
+        if (m.x === player.x && m.y === player.y) {
+          score--;
+          pointsText.textContent = "Điểm: " + score;
+          statusText.textContent = "👹 Bị quái vật bắt!";
+          setTimeout(() => {
+            player.x = 5;
+            player.y = 5;
+            drawMaze();
+          }, 1000);
+        }
+      }
+    }
+
+    function moveMonsters() {
+      for (const m of monsters) {
+        let dx = player.x - m.x;
+        let dy = player.y - m.y;
+
+        let moveX = 0;
+        let moveY = 0;
+
+        if (Math.abs(dx) > Math.abs(dy)) {
+          moveX = dx > 0 ? 1 : -1;
+        } else if (dy !== 0) {
+          moveY = dy > 0 ? 1 : -1;
+        }
+
+        const tryMoves = [
+          { x: m.x + moveX, y: m.y + moveY },
+          { x: m.x + (moveX !== 0 ? moveX : 0), y: m.y },
+          { x: m.x, y: m.y + (moveY !== 0 ? moveY : 0) }
+        ];
+
+        for (const move of tryMoves) {
+          if (
+            move.x >= 0 && move.x < 10 &&
+            move.y >= 0 && move.y < 10 &&
+            mazeData[move.y][move.x] !== "#"
+          ) {
+            m.x = move.x;
+            m.y = move.y;
+            break;
+          }
+        }
+      }
+    }
+
+    document.addEventListener("keydown", e => {
+      if (e.key === "ArrowUp") movePlayer(0, -1);
+      if (e.key === "ArrowDown") movePlayer(0, 1);
+      if (e.key === "ArrowLeft") movePlayer(-1, 0);
+      if (e.key === "ArrowRight") movePlayer(1, 0);
+    });
+
+    function gameLoop() {
+      moveMonsters();
+      drawMaze();
+    }
+
+    setInterval(gameLoop, 800);
+    drawMaze();
+  </script>
+</body>
+</html>
